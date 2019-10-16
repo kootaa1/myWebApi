@@ -13,43 +13,25 @@ namespace MyWebAPI.Controllers
     [Route("api/Todos")]
     public class TodoController : Controller
     {
-
+        TodoTempStorage storage = TodoTempStorage.GetInstance();
         public TodoController()
         {
-            storage.Add(new TodoItem
-            {
-                Id = 1,
-                IsComplete = true,
-                Name = "Do something 1"
-            });
-            storage.Add(new TodoItem
-            {
-                Id = 2,
-                IsComplete = false,
-                Name = "Do something 2"
-            });
-            storage.Add(new TodoItem
-            {
-                Id = 3,
-                IsComplete = true,
-                Name = "Do something 3"
-            });
         }
         //TodoTempStorage storage = new TodoTempStorage();
-        List<TodoItem> storage = new List<TodoItem>();
 
         [HttpGet]
         public async Task<ActionResult<List<TodoItem>>> GetTodoItems()
         {
-            if (storage == null)
+            var result = storage.GetItems();
+            if (result == null)
                 return NotFound();
-            return storage;
+            else return result;
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<TodoItem>> GetTodoItem(long id)
         {
-            var todoItem = storage.Find(x => x.Id == id);
+            var todoItem = storage.GetItem(id);
             if (todoItem == null)
                 return NotFound();
             return todoItem;
@@ -62,13 +44,10 @@ namespace MyWebAPI.Controllers
             {
                 return BadRequest();
             }
-            if (storage.Find(x => x == todoItem) == null)
+            if(!storage.AddItem(todoItem))
             {
                 return BadRequest();
             }
-            todoItem.Id = storage.Capacity + 1;
-            todoItem.IsComplete = false;
-            storage.Add(todoItem);
             return CreatedAtAction(nameof(GetTodoItem), new { id = todoItem.Id }, todoItem);
         }
 
@@ -77,28 +56,20 @@ namespace MyWebAPI.Controllers
         {
             if (id != item.Id)
                 return BadRequest();
-            int index = storage.FindIndex(x => x == item);
-            if (index != -1)
-            {
-                storage[index].Id = item.Id;
-                storage[index].Name = item.Name;
-                storage[index].IsComplete = item.IsComplete;
+            if (storage.UpdateItem(item))
                 return NoContent();
-            }
             return NotFound();
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<TodoItem>> DeleteTodoItem(long id)
         {
-            var todoItemIndex = storage.FindIndex(x => x.Id == id);
-            if (todoItemIndex == -1)
+            var deletedItem = storage.DeleteItem(id);
+            if (deletedItem == null)
             {
                 return NotFound();
             }
-            TodoItem DeletedItem = storage[todoItemIndex];
-            storage.Remove(storage[todoItemIndex]);
-            return DeletedItem;
+            return deletedItem;
         }
     }
 }
